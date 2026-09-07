@@ -1,0 +1,194 @@
+{
+  "info": {
+    "_postman_id": "c5eb4b5a-9c03-46b1-a900-employee-api-demo",
+    "name": "Employee Management API - APIM Assessment",
+    "description": "Run requests individually in numbered order. Run only the Rate Limit folder with 21 iterations to demonstrate HTTP 429.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://YOUR_APIM.azure-api.net/employees-api" },
+    { "key": "hrSubscriptionKey", "value": "" },
+    { "key": "managerSubscriptionKey", "value": "" },
+    { "key": "employeeId", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "01 - HR Success",
+      "item": [
+        {
+          "name": "Create employee (201 and APIM redaction)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Ocp-Apim-Subscription-Key", "value": "{{hrSubscriptionKey}}", "type": "text" },
+              { "key": "X-Department", "value": "HR", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"Asha Rao\",\n  \"email\": \"asha.{{$timestamp}}@example.com\",\n  \"department\": \"Engineering\",\n  \"job_title\": \"Platform Engineer\",\n  \"internal_notes\": \"Salary review information - must be removed by APIM\"\n}"
+            },
+            "url": "{{baseUrl}}/employees"
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+              "const body = pm.response.json();",
+              "pm.environment.set('employeeId', body.id);",
+              "pm.test('Sensitive field removed by APIM', () => pm.expect(body).not.to.have.property('internal_notes'));"
+            ], "type": "text/javascript" }
+          }]
+        },
+        {
+          "name": "List employees (200)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Ocp-Apim-Subscription-Key", "value": "{{hrSubscriptionKey}}" },
+              { "key": "X-Department", "value": "HR" }
+            ],
+            "url": "{{baseUrl}}/employees"
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+            "pm.test('Every sensitive field is removed', () => pm.response.json().forEach(e => pm.expect(e).not.to.have.property('internal_notes')));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Get employee by ID (200)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Ocp-Apim-Subscription-Key", "value": "{{hrSubscriptionKey}}" },
+              { "key": "X-Department", "value": "HR" }
+            ],
+            "url": "{{baseUrl}}/employees/{{employeeId}}"
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+            "pm.test('Sensitive field is absent', () => pm.expect(pm.response.json()).not.to.have.property('internal_notes'));"
+          ], "type": "text/javascript" } }]
+        }
+      ]
+    },
+    {
+      "name": "02 - Manager Authorization",
+      "item": [
+        {
+          "name": "Manager GET succeeds (200)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Ocp-Apim-Subscription-Key", "value": "{{managerSubscriptionKey}}" },
+              { "key": "X-Department", "value": "Manager" }
+            ],
+            "url": "{{baseUrl}}/employees"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status is 200', () => pm.response.to.have.status(200));"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Manager POST is forbidden (403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Ocp-Apim-Subscription-Key", "value": "{{managerSubscriptionKey}}" },
+              { "key": "X-Department", "value": "Manager" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"full_name\":\"Blocked User\",\"email\":\"blocked@example.com\",\"department\":\"Sales\",\"job_title\":\"Manager\"}" },
+            "url": "{{baseUrl}}/employees"
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status is 403', () => pm.response.to.have.status(403));",
+            "pm.test('Clear policy error', () => pm.expect(pm.response.json().error).to.eql('operation_not_allowed'));"
+          ], "type": "text/javascript" } }]
+        }
+      ]
+    },
+    {
+      "name": "03 - Negative Tests",
+      "item": [
+        {
+          "name": "Missing X-Department (400)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Ocp-Apim-Subscription-Key", "value": "{{hrSubscriptionKey}}" }],
+            "url": "{{baseUrl}}/employees"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status is 400', () => pm.response.to.have.status(400));"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Invalid department for HR key (403)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Ocp-Apim-Subscription-Key", "value": "{{hrSubscriptionKey}}" },
+              { "key": "X-Department", "value": "Finance" }
+            ],
+            "url": "{{baseUrl}}/employees"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status is 403', () => pm.response.to.have.status(403));"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Missing subscription key (401)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Department", "value": "HR" }],
+            "url": "{{baseUrl}}/employees"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status is 401', () => pm.response.to.have.status(401));"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Unknown employee (404)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Ocp-Apim-Subscription-Key", "value": "{{hrSubscriptionKey}}" },
+              { "key": "X-Department", "value": "HR" }
+            ],
+            "url": "{{baseUrl}}/employees/999999999"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status is 404', () => pm.response.to.have.status(404));"], "type": "text/javascript" } }]
+        }
+      ]
+    },
+    {
+      "name": "04 - Rate Limit (run folder 21 iterations)",
+      "item": [
+        {
+          "name": "Rate limit probe",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Ocp-Apim-Subscription-Key", "value": "{{managerSubscriptionKey}}" },
+              { "key": "X-Department", "value": "Manager" }
+            ],
+            "url": "{{baseUrl}}/employees"
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Expected normal or throttled response', () => pm.expect(pm.response.code).to.be.oneOf([200, 429]));",
+            "if (pm.response.code === 429) pm.test('Retry-After is present', () => pm.expect(pm.response.headers.has('Retry-After')).to.be.true);"
+          ], "type": "text/javascript" } }]
+        }
+      ]
+    },
+    {
+      "name": "05 - Cleanup",
+      "item": [
+        {
+          "name": "HR deletes employee (204)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Ocp-Apim-Subscription-Key", "value": "{{hrSubscriptionKey}}" },
+              { "key": "X-Department", "value": "HR" }
+            ],
+            "url": "{{baseUrl}}/employees/{{employeeId}}"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status is 204', () => pm.response.to.have.status(204));"], "type": "text/javascript" } }]
+        }
+      ]
+    }
+  ]
+}
