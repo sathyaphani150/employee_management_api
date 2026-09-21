@@ -54,6 +54,7 @@ class HealthResponse(BaseModel):
     status: str
     environment: str
     version: str
+    release_message: str
 
 
 class ErrorResponse(BaseModel):

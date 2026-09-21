@@ -15,7 +15,7 @@ class Settings(BaseSettings):
 
     app_name: str = "Employee Management API"
     app_environment: str = "development"
-    app_version: str = "1.0.0"
+    app_version: str = "1.1.0"
     log_level: str = Field(default="INFO", pattern="^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$")
 
     model_config = SettingsConfigDict(

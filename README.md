@@ -325,6 +325,9 @@ Then add this argument to `HealthResponse(...)` in `app/main.py`:
 release_message="Employee API v2 deployment verified",
 ```
 
+This repository now includes that v2 change. The `/health` response includes both
+`"version": "1.1.0"` and `"release_message": "Employee API v2 deployment verified"`.
+
 Build and push a new immutable tag:
 
 ```powershell
@@ -333,4 +336,4 @@ docker tag employee-api:v2 acremployeeapi12345.azurecr.io/employee-api:v2
 docker push acremployeeapi12345.azurecr.io/employee-api:v2
 ```
 
-Update the Container App image to `acremployeeapi12345.azurecr.io/employee-api:v2`, change `APP_VERSION` to `1.1.0`, deploy the new revision, and verify `/health`.
+Update the Container App image to `acremployeeapi12345.azurecr.io/employee-api:v2`, set `APP_VERSION` to `1.1.0`, deploy the new revision, and verify `/health`.

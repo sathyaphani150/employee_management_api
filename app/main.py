@@ -31,4 +31,5 @@ def health() -> HealthResponse:
         status="healthy",
         environment=settings.app_environment,
         version=settings.app_version,
+        release_message="Employee API v2 deployment verified",
     )
